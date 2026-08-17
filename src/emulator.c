@@ -40,7 +40,7 @@ bool rv32e_step(rv32e_cpu_t *cpu){
     uint32_t raw;
     rv32e_decoded_instruction_t i;
     uint32_t left, right, result, address;
-    uint32_t next_pc = cpu->pc + 4;
+    uint32_t next_pc = cpu->pc + 4u;
     bool write_result = false;
 
     if(cpu->trap!=RV32E_TRAP_NONE || rv32e_fetch32(cpu->memory.bytes, sizeof(cpu->memory.bytes), cpu->pc, &raw)!=RV32E_MEM_OK){
@@ -66,7 +66,7 @@ bool rv32e_step(rv32e_cpu_t *cpu){
             else if(i.funct3 == 3 && i.funct7 == 0x00) result = rv32e_sltu(left,right);
             else if(i.funct3 == 4 && i.funct7 == 0x00) result = left ^ right;
             else if(i.funct3 == 5 && i.funct7 == 0x00) result = rv32e_srl(left,right);
-            else if(i.funct3 == 5 && i.funct7 == 0x20) result = rv32e_sru(left,right);
+            else if(i.funct3 == 5 && i.funct7 == 0x20) result = rv32e_sra(left,right);
             else if(i.funct3 == 6 && i.funct7 == 0x00) result = left | right;
             else if(i.funct3 == 7 && i.funct7 == 0x00) result = left & right;
             else {
@@ -196,7 +196,7 @@ bool rv32e_step(rv32e_cpu_t *cpu){
                 }
             }
             else if(i.funct3==6){
-                if(left>=right){
+                if(left<right){
                     next_pc = cpu->pc + (uint32_t)i.immediate;
                 }
             }
@@ -212,20 +212,35 @@ bool rv32e_step(rv32e_cpu_t *cpu){
             break;
 
         case 0x6f: //JAL
-            result = next_pc + 4;
-            next_pc = next_pc + (uint32_t)i.immediate;
-            write_result = tu
+            result = next_pc;
+            next_pc = cpu->pc + (uint32_t)i.immediate;
+            write_result = true;
             break;
+
         case 0x37: 
+            result = (uint32_t)i.immediate;
+            write_result = true;
+            break;
+        
         case 0x17:
+
+            result = cpu->pc + (uint32_t)i.immediate;
+            write_result = true;
+            break;
+        default:
+            trap(cpu, RV32E_TRAP_ILLEGAL_INSTRUCTION); return false;
     }
+    if(write_result) rv32e_register_write(&cpu->registers, i.rd, result);
+    cpu->pc = next_pc;
+    cpu->cycles++;
+    return true;
     
     
 }
 
-bool rv32e_run(rv32e_cut_t *cpu, uint64_t max_cycles){
+bool rv32e_run(rv32e_cpu_t *cpu, uint64_t max_cycles){
     while(cpu->trap==RV32E_TRAP_NONE && cpu->cycles < max_cycles){
-        rv32e_step(cpu);
+        if(!rv32e_step(cpu)) break;
     }
     return cpu->trap == RV32E_TRAP_NONE;
 }
