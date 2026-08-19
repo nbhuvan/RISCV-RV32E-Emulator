@@ -3,7 +3,7 @@
 #include<stdio.h>
 
 int main(){
-
+    /* addi x1, x0, 5; addi x2, x0, 7; add x3, x1, x2; ebreak */
     const uint32_t program[] = { 0x00500093, 0x00700113, 0x002081b3, 0x00100073 };
     rv32e_cpu_t cpu;
 
