@@ -1,13 +1,14 @@
 #include "register.h"
 #include <assert.h>
 #include <string.h>
-
+// #include<stdio.h>
 
 void rv32e_registers_init(rv32e_register_t *registers){
     memset(registers, 0, sizeof(*registers));
 }
 
 uint32_t rv32e_register_read(const rv32e_register_t* registers, unsigned index){
+    // printf("%u\n",index);
     assert(index < RV32E_REGISTER_COUNT);
     return index == 0 ? 0u : registers->x[index];
 

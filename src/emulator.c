@@ -11,8 +11,9 @@ static bool valid_registers(const rv32e_decoded_instruction_t *i){
         case 0x33: return i->rd < 16 && i->rs1 <16 && i->rs2 <16;
         case 0x03: case 0x13: case 0x67: return i->rd < 16 && i->rs1<16;
         case 0x23: case 0x63: return i->rs1 < 16 && i->rs2<16;
-        case 0x17: case 0x37: case 0x6f: return i->rd<16;
-        default: return true;
+        case 0x17: case 0x37: case 0x6f: return i->rd < 16;
+        case 0x73: return true;
+        default: return false;
     }
 }
 
@@ -53,8 +54,23 @@ bool rv32e_step(rv32e_cpu_t *cpu){
         trap(cpu,RV32E_TRAP_ILLEGAL_INSTRUCTION);
         return false;
     }
-    left = rv32e_register_read(&cpu->registers,i.rs1);
-    right = rv32e_register_read(&cpu->registers,i.rs2);
+    left = 0;
+    right = 0;
+    switch (i.opcode) {
+        case 0x33: case 0x03: case 0x13: case 0x23:
+        case 0x63: case 0x67:
+            left = rv32e_register_read(&cpu->registers, i.rs1);
+            break;
+        default:
+            break;
+    }
+    switch (i.opcode) {
+        case 0x33: case 0x23: case 0x63:
+            right = rv32e_register_read(&cpu->registers, i.rs2);
+            break;
+        default:
+            break;
+    }
     result = 0;
 
     switch (i.opcode){
@@ -101,7 +117,7 @@ bool rv32e_step(rv32e_cpu_t *cpu){
                     trap(cpu,RV32E_TRAP_MEMORY);
                     return false;
                 }
-                right = (uint32_t)sign_extend(right,8);
+                // right = (uint32_t)sign_extend(right,8);
             }
             else if(i.funct3==1){
                 
@@ -109,7 +125,7 @@ bool rv32e_step(rv32e_cpu_t *cpu){
                     trap(cpu,RV32E_TRAP_MEMORY);
                     return false;
                 }
-                right = (uint32_t)sign_extend(right,16);
+                // right = (uint32_t)sign_extend(right,16);
             }
             else if(i.funct3==2){
                 
@@ -227,6 +243,19 @@ bool rv32e_step(rv32e_cpu_t *cpu){
             result = cpu->pc + (uint32_t)i.immediate;
             write_result = true;
             break;
+        case 0x73: // SYSTEM
+            if (i.funct3 != 0 || i.rd != 0 || i.rs1 != 0) {
+                trap(cpu, RV32E_TRAP_ILLEGAL_INSTRUCTION);
+                return false;
+            }
+            if ((i.raw >> 20) == 0) {
+                trap(cpu, RV32E_TRAP_ECALL);
+            } else if ((i.raw >> 20) == 1) {
+                trap(cpu, RV32E_TRAP_BREAKPOINT);
+            } else {
+                trap(cpu, RV32E_TRAP_ILLEGAL_INSTRUCTION);
+            }
+            return false;
         default:
             trap(cpu, RV32E_TRAP_ILLEGAL_INSTRUCTION); return false;
     }
