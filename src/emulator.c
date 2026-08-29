@@ -152,6 +152,7 @@ bool rv32e_step(rv32e_cpu_t *cpu){
                 trap(cpu,RV32E_TRAP_ILLEGAL_INSTRUCTION);
                 return false;
             }
+            result = right;
             write_result = true;
             break;
         case 0x23: // Store
